@@ -1,7 +1,9 @@
 {
   "domain": "tbm_live",
   "name": "TBM Live",
-  "codeowners": ["@itsNathanB"],
+  "codeowners": [
+    "@itsNathanB"
+  ],
   "config_flow": true,
   "dependencies": [],
   "documentation": "https://github.com/itsNathanB/ha-tbm-live",
@@ -9,5 +11,5 @@
   "iot_class": "cloud_polling",
   "issue_tracker": "https://github.com/itsNathanB/ha-tbm-live/issues",
   "requirements": [],
-  "version": "0.1.0"
+  "version": "0.2.0"
 }

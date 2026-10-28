@@ -3,23 +3,31 @@
     "step": {
       "user": {
         "title": "Choisir une ligne",
-        "description": "Choisissez la ligne de bus ou de tram TBM à suivre. Tapez dans la liste pour la filtrer.",
+        "description": "Choisissez la ligne de tram ou de bus TBM. Commencez à taper pour filtrer la liste (ex. « Tram B », « Bus 15 »).",
         "data": {
-          "line_ref": "Ligne"
+          "line": "Ligne"
         }
       },
       "stop": {
-        "title": "Choisir l'arrêt et le sens",
-        "description": "Arrêts desservis par {line}. Chaque entrée indique l'arrêt puis la destination de la ligne.",
+        "title": "Choisir l'arrêt",
+        "description": "Arrêts desservis par {line}. Commencez à taper le nom de l'arrêt pour filtrer la liste.",
         "data": {
-          "choice": "Arrêt et sens"
+          "stop": "Arrêt"
+        }
+      },
+      "direction": {
+        "title": "Choisir le sens",
+        "description": "{line} à {stop} : dans quelle direction partez-vous ?",
+        "data": {
+          "direction": "Sens"
         }
       }
     },
     "error": {
       "cannot_connect": "Impossible de joindre l'API temps réel TBM. Réessayez dans un instant.",
       "no_lines": "L'API TBM n'a renvoyé aucune ligne.",
-      "no_stops": "Aucun arrêt trouvé pour cette ligne. Réessayez plus tard (la liste est construite à partir des courses du jour)."
+      "no_stops": "Aucun arrêt trouvé pour cette ligne. Réessayez plus tard.",
+      "invalid_choice": "Choisissez une entrée de la liste."
     },
     "abort": {
       "already_configured": "Cet arrêt et ce sens sont déjà suivis pour cette ligne."

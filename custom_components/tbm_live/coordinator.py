@@ -10,12 +10,11 @@ from homeassistant.helpers.update_coordinator import DataUpdateCoordinator, Upda
 
 from .api import Departure, TbmClient, TbmError
 from .const import (
-    CONF_DESTINATION_REF,
     CONF_DIRECTION_REF,
     CONF_LINE_REF,
-    CONF_PHYSICAL,
     CONF_STOP_NAME,
     CONF_STOP_REF,
+    CONF_STOP_REFS,
     DEFAULT_SCAN_INTERVAL,
     DOMAIN,
 )
@@ -46,12 +45,10 @@ class TbmCoordinator(DataUpdateCoordinator[list[Departure]]):
         data = self.config_entry.data
         try:
             return await self.client.async_get_departures(
-                stop_ref=data[CONF_STOP_REF],
+                # Les entrées créées en v0.1 n'ont qu'un seul point d'arrêt.
+                stop_refs=data.get(CONF_STOP_REFS) or [data[CONF_STOP_REF]],
                 line_ref=data[CONF_LINE_REF],
                 direction_ref=data.get(CONF_DIRECTION_REF),
-                destination_ref=data.get(CONF_DESTINATION_REF),
-                # Un arrêt physique ne dessert qu'un sens : pas de filtre.
-                filter_direction=not data.get(CONF_PHYSICAL, False),
             )
         except TbmError as err:
             raise UpdateFailed(str(err)) from err

@@ -90,27 +90,29 @@ class Line:
 
 
 @dataclass(slots=True)
-class StopChoice:
-    """Un arrêt dans un sens donné, proposé à l'utilisateur."""
+class StopDirection:
+    """Un sens de passage à un arrêt donné."""
 
-    stop_ref: str
-    stop_name: str
-    direction_ref: str
-    direction_name: str
-    destination_ref: str | None = None
-    # True si l'arrêt est un point d'arrêt physique propre à ce sens : dans ce
-    # cas inutile de filtrer les passages par sens.
-    physical: bool = False
-
-    @property
-    def key(self) -> str:
-        """Identifiant unique du choix."""
-        return f"{self.stop_ref}|{self.direction_ref}"
+    ref: str
+    # Terminus atteignables depuis cet arrêt, du plus fréquent au plus rare.
+    destinations: list[str] = field(default_factory=list)
+    # Points d'arrêt physiques à interroger pour ce sens.
+    stop_refs: list[str] = field(default_factory=list)
 
     @property
     def label(self) -> str:
-        """Libellé affiché dans la liste de choix."""
-        return f"{self.stop_name} → {self.direction_name}"
+        """Libellé affiché : « Vers Pessac Centre / France Alouette »."""
+        if self.destinations:
+            return "Vers " + " / ".join(self.destinations)
+        return f"Sens {int(self.ref) + 1}" if self.ref.isdigit() else self.ref
+
+
+@dataclass(slots=True)
+class LineStop:
+    """Un arrêt (commercial) d'une ligne, avec les sens qui y passent."""
+
+    name: str
+    directions: dict[str, StopDirection] = field(default_factory=dict)
 
 
 @dataclass(slots=True)
@@ -123,6 +125,7 @@ class Departure:
     destination: str | None
     line_name: str | None
     cancelled: bool = False
+    journey_ref: str | None = None
 
     @property
     def delay_minutes(self) -> int | None:
@@ -299,120 +302,168 @@ def parse_lines(payload: dict[str, Any]) -> list[Line]:
     return sorted(lines.values(), key=_line_sort_key)
 
 
-def parse_stops_from_timetable(
-    payloads: dict[str, dict[str, Any]], line_ref: str
-) -> list[StopChoice]:
-    """Construit la liste ordonnée des arrêts par sens depuis estimated-timetable.
+_SMALL_WORDS = {"de", "du", "des", "la", "le", "les", "et", "à", "au", "aux", "sur", "en"}
+
+
+def pretty_name(text: str | None) -> str | None:
+    """« LA GARDETTE » -> « La Gardette ». Laisse intacts les noms déjà en casse mixte."""
+    if not text or not text.isupper():
+        return text
+
+    def word(w: str, first: bool) -> str:
+        lower = w.lower()
+        if not first and lower in _SMALL_WORDS:
+            return lower
+        if lower.startswith(("d'", "l'")) and len(lower) > 2:
+            head = lower[:2] if not first else lower[0].upper() + "'"
+            return head + lower[2:].capitalize()
+        return "-".join(part.capitalize() for part in lower.split("-"))
+
+    return " ".join(word(w, i == 0) for i, w in enumerate(text.split()))
+
+
+def _norm(name: str) -> str:
+    return re.sub(r"\s+", " ", name).strip().casefold()
+
+
+def _calls_of(journey: dict[str, Any]) -> list[dict[str, Any]]:
+    """Arrêts d'une course, dans l'ordre de desserte."""
+    calls = collect(journey.get("RecordedCalls"), "RecordedCall")
+    calls += collect(journey.get("EstimatedCalls"), "EstimatedCall")
+    orders = [as_str(c.get("Order")) for c in calls]
+    if calls and all(o and o.isdigit() for o in orders):
+        calls = [c for _, c in sorted(zip((int(o) for o in orders), calls), key=lambda x: x[0])]
+    return calls
+
+
+def _merge_sequence(order: list[str], sequence: list[str]) -> None:
+    """Insère dans `order` les éléments de `sequence` en respectant leur position."""
+    position = -1
+    for item in sequence:
+        if item in order:
+            position = order.index(item)
+        else:
+            position += 1
+            order.insert(position, item)
+
+
+def parse_line_stops_from_timetable(
+    payloads: dict[str, dict[str, Any]], line: Line
+) -> list[LineStop]:
+    """Arrêts de la ligne et sens desservis, depuis estimated-timetable.
 
     `payloads` associe un DirectionRef demandé ("0", "1") à la réponse brute.
+    Toutes les courses sont fusionnées : les branches (tram A, B...) et les
+    services partiels sont donc couverts.
     """
-    choices: list[StopChoice] = []
+    stops: dict[str, LineStop] = {}
+    display: dict[str, str] = {}
+    counters: dict[tuple[str, str], Counter[str]] = {}
+    sequences: dict[str, list[list[str]]] = {}
+
     for requested_direction, payload in payloads.items():
-        journeys = [
-            j
-            for j in collect(payload, "EstimatedVehicleJourney")
-            if as_str(j.get("LineRef")) in (None, line_ref)
-        ]
-        if not journeys:
-            continue
-
-        destination_names = Counter(
-            name
-            for j in journeys
-            if (name := as_str(j.get("DestinationName")))
-        )
-        destination_refs = Counter(
-            ref for j in journeys if (ref := as_str(j.get("DestinationRef")))
-        )
-        direction_name = (
-            destination_names.most_common(1)[0][0]
-            if destination_names
-            else f"Sens {int(requested_direction) + 1}"
-            if requested_direction.isdigit()
-            else requested_direction
-        )
-        destination_ref = (
-            destination_refs.most_common(1)[0][0] if destination_refs else None
-        )
-
-        def calls_of(journey: dict[str, Any]) -> list[dict[str, Any]]:
-            calls = collect(journey.get("RecordedCalls"), "RecordedCall")
-            calls += collect(journey.get("EstimatedCalls"), "EstimatedCall")
-            # Tri par ordre de desserte si disponible.
-            return sorted(
-                calls,
-                key=lambda c: int(as_str(c.get("Order")) or 0)
-                if (as_str(c.get("Order")) or "").isdigit()
-                else 0,
+        for journey in collect(payload, "EstimatedVehicleJourney"):
+            if as_str(journey.get("LineRef")) not in (None, line.ref):
+                continue
+            direction = as_str(journey.get("DirectionRef")) or requested_direction
+            calls = [c for c in _calls_of(journey) if as_str(c.get("StopPointRef"))]
+            if not calls:
+                continue
+            names = {
+                as_str(c.get("StopPointRef")): as_str(c.get("StopPointName"))
+                for c in calls
+            }
+            destination_ref = as_str(journey.get("DestinationRef")) or as_str(
+                calls[-1].get("StopPointRef")
             )
-
-        seen: set[str] = set()
-        # Les courses les plus longues d'abord : elles couvrent tout le tracé.
-        for journey in sorted(journeys, key=lambda j: len(calls_of(j)), reverse=True):
-            for call in calls_of(journey):
-                stop_ref = as_str(call.get("StopPointRef"))
-                if not stop_ref or stop_ref in seen:
+            destination = pretty_name(
+                as_str(journey.get("DestinationName")) or names.get(destination_ref)
+            )
+            sequence: list[str] = []
+            for call in calls:
+                ref = as_str(call.get("StopPointRef"))
+                name = names.get(ref) or ref
+                key = _norm(name)
+                sequence.append(key)
+                display.setdefault(key, name)
+                # Le terminus d'une course n'est pas un départ.
+                if ref == destination_ref:
                     continue
-                seen.add(stop_ref)
-                choices.append(
-                    StopChoice(
-                        stop_ref=stop_ref,
-                        stop_name=as_str(call.get("StopPointName")) or stop_ref,
-                        direction_ref=requested_direction,
-                        direction_name=direction_name,
-                        destination_ref=destination_ref,
-                        physical=True,
-                    )
+                stop = stops.setdefault(key, LineStop(name=name))
+                stop_direction = stop.directions.setdefault(
+                    direction, StopDirection(ref=direction)
                 )
-    return choices
+                if ref not in stop_direction.stop_refs:
+                    stop_direction.stop_refs.append(ref)
+                if destination:
+                    counters.setdefault((key, direction), Counter())[destination] += 1
+            sequences.setdefault(direction, []).append(sequence)
+
+    if not stops:
+        return []
+
+    for (key, direction), counter in counters.items():
+        stops[key].directions[direction].destinations = [
+            name for name, _ in counter.most_common()
+        ]
+
+    # Ordre le long de la ligne : sens 0 d'abord, puis sens 1 parcouru à l'envers.
+    order: list[str] = []
+    for direction in sorted(sequences):
+        reverse = direction != min(sequences)
+        for sequence in sorted(sequences[direction], key=len, reverse=True):
+            _merge_sequence(order, list(reversed(sequence)) if reverse else sequence)
+
+    return [stops[key] for key in order if key in stops]
 
 
-def parse_stops_from_discovery(
+def parse_line_stops_from_discovery(
     payload: dict[str, Any], line: Line
-) -> list[StopChoice]:
-    """Repli : arrêts desservant la ligne, combinés aux sens de lines-discovery."""
-    stops: dict[str, str] = {}
+) -> list[LineStop]:
+    """Repli (nuit) : arrêts desservant la ligne, sens issus de lines-discovery.
+
+    Sans les courses du jour, on ne sait pas quel point d'arrêt physique sert
+    quel sens : tous sont interrogés et les passages sont filtrés par sens.
+    """
+    refs_by_name: dict[str, list[str]] = {}
+    display: dict[str, str] = {}
     for raw in collect(payload, "AnnotatedStopPointRef"):
         stop_ref = as_str(raw.get("StopPointRef"))
         if not stop_ref:
             continue
         served = {as_str(item) for item in as_list(raw.get("Lines"))}
-        served |= {
-            as_str(item.get("LineRef"))
-            for item in as_list(raw.get("Lines"))
-            if isinstance(item, dict) and "LineRef" in item
-        }
         if line.ref not in served:
             continue
-        stops[stop_ref] = as_str(raw.get("StopName")) or stop_ref
+        name = as_str(raw.get("StopName")) or stop_ref
+        key = _norm(name)
+        display.setdefault(key, name)
+        refs_by_name.setdefault(key, []).append(stop_ref)
 
-    directions = line.directions or [
-        Direction(ref="0", name="Sens 1"),
-        Direction(ref="1", name="Sens 2"),
-    ]
-    choices = [
-        StopChoice(
-            stop_ref=stop_ref,
-            stop_name=stop_name,
-            direction_ref=direction.ref,
-            direction_name=direction.name,
-            destination_ref=direction.destination_ref,
-            physical=False,
-        )
-        for stop_ref, stop_name in sorted(stops.items(), key=lambda s: s[1])
-        for direction in directions
-    ]
-    return choices
+    directions = line.directions or [Direction(ref="0", name=""), Direction(ref="1", name="")]
+    result: list[LineStop] = []
+    for key in sorted(refs_by_name, key=lambda k: display[k].casefold()):
+        stop = LineStop(name=display[key])
+        for direction in directions:
+            stop.directions[direction.ref] = StopDirection(
+                ref=direction.ref,
+                destinations=[d.strip() for d in direction.name.split(" / ") if d.strip()],
+                stop_refs=list(refs_by_name[key]),
+            )
+        result.append(stop)
+    return result
 
 
 def parse_departures(
     payload: dict[str, Any],
     line_ref: str,
     direction_ref: str | None = None,
-    destination_ref: str | None = None,
-    filter_direction: bool = False,
+    monitoring_ref: str | None = None,
 ) -> list[Departure]:
-    """Parse la réponse stop-monitoring en passages triés."""
+    """Parse la réponse stop-monitoring en passages triés.
+
+    - garde uniquement la ligne et le sens demandés ;
+    - écarte les véhicules qui terminent leur course à cet arrêt (arrivées).
+    """
     departures: list[Departure] = []
     for visit in collect(payload, "MonitoredStopVisit"):
         journey = visit.get("MonitoredVehicleJourney") or {}
@@ -422,18 +473,21 @@ def parse_departures(
         if visit_line and visit_line != line_ref:
             continue
 
-        if filter_direction:
-            visit_direction = as_str(journey.get("DirectionRef"))
-            visit_destination = as_str(journey.get("DestinationRef"))
-            if direction_ref is not None and visit_direction is not None:
-                if visit_direction != direction_ref:
-                    continue
-            elif destination_ref and visit_destination:
-                if visit_destination != destination_ref:
-                    continue
+        visit_direction = as_str(journey.get("DirectionRef"))
+        if direction_ref is not None and visit_direction not in (None, direction_ref):
+            continue
 
         call = journey.get("MonitoredCall") or {}
         if not isinstance(call, dict):
+            continue
+
+        stop_ref = as_str(visit.get("MonitoringRef")) or monitoring_ref
+        order = as_str(call.get("Order"))
+        if (
+            stop_ref
+            and as_str(journey.get("DestinationRef")) == stop_ref
+            and not (order and order.isdigit() and int(order) <= 1)
+        ):
             continue
 
         expected = parse_time(call.get("ExpectedDepartureTime")) or parse_time(
@@ -458,19 +512,42 @@ def parse_departures(
             )
         ).lower()
 
+        framed = journey.get("FramedVehicleJourneyRef")
+        journey_ref = (
+            as_str(framed.get("DatedVehicleJourneyRef"))
+            if isinstance(framed, dict)
+            else None
+        ) or as_str(journey.get("VehicleJourneyRef"))
+
         departures.append(
             Departure(
                 time=when,
                 aimed_time=aimed,
                 realtime=realtime,
-                destination=as_str(journey.get("DestinationName"))
-                or as_str(call.get("DestinationDisplay")),
+                destination=pretty_name(
+                    as_str(journey.get("DestinationName"))
+                    or as_str(call.get("DestinationDisplay"))
+                ),
                 line_name=as_str(journey.get("PublishedLineName")),
                 cancelled="cancel" in status,
+                journey_ref=journey_ref,
             )
         )
     departures.sort(key=lambda d: d.time)
     return departures
+
+
+def merge_departures(groups: list[list[Departure]]) -> list[Departure]:
+    """Fusionne les passages de plusieurs points d'arrêt, sans doublon."""
+    seen: set[str] = set()
+    merged: list[Departure] = []
+    for departure in sorted((d for g in groups for d in g), key=lambda d: d.time):
+        if departure.journey_ref:
+            if departure.journey_ref in seen:
+                continue
+            seen.add(departure.journey_ref)
+        merged.append(departure)
+    return merged
 
 
 # --------------------------------------------------------------------------
@@ -522,13 +599,12 @@ class TbmClient:
             raise TbmNoDataError("Aucune ligne renvoyée par lines-discovery")
         return lines
 
-    async def async_get_stop_choices(self, line: Line) -> list[StopChoice]:
-        """Arrêts de la ligne, par sens.
+    async def async_get_line_stops(self, line: Line) -> list[LineStop]:
+        """Arrêts de la ligne, avec les sens et terminus desservis.
 
-        Source principale : estimated-timetable (arrêts réellement desservis,
-        dans l'ordre, avec la destination). Elle ne contient que les courses
-        de la journée commerciale en cours ; la nuit, on se replie sur
-        stoppoints-discovery.
+        Source principale : estimated-timetable (courses réelles de la journée).
+        Elle ne contient que la journée commerciale en cours ; la nuit, on se
+        replie sur stoppoints-discovery + les sens de lines-discovery.
         """
         payloads: dict[str, dict[str, Any]] = {}
         for direction in ("0", "1"):
@@ -544,9 +620,9 @@ class TbmClient:
             except TbmError as err:
                 _LOGGER.debug("estimated-timetable sens %s : %s", direction, err)
 
-        choices = parse_stops_from_timetable(payloads, line.ref)
-        if choices:
-            return choices
+        stops = parse_line_stops_from_timetable(payloads, line)
+        if stops:
+            return stops
 
         _LOGGER.debug("Repli sur stoppoints-discovery pour %s", line.ref)
         payload = await self._get(
@@ -558,33 +634,40 @@ class TbmClient:
                 "BoundingBox.LowerRight.latitude": METRO_BBOX["lower_right_lat"],
             },
         )
-        choices = parse_stops_from_discovery(payload, line)
-        if not choices:
+        stops = parse_line_stops_from_discovery(payload, line)
+        if not stops:
             raise TbmNoDataError(f"Aucun arrêt trouvé pour {line.ref}")
-        return choices
+        return stops
 
     async def async_get_departures(
         self,
-        stop_ref: str,
+        stop_refs: list[str],
         line_ref: str,
         direction_ref: str | None = None,
-        destination_ref: str | None = None,
-        filter_direction: bool = False,
     ) -> list[Departure]:
-        """Prochains passages à un arrêt, pour une ligne et un sens."""
-        payload = await self._get(
-            "stop-monitoring",
-            {
-                "MonitoringRef": stop_ref,
-                "LineRef": line_ref,
-                "PreviewInterval": PREVIEW_INTERVAL,
-                "MaximumStopVisits": MAX_STOP_VISITS,
-            },
-        )
-        return parse_departures(
-            payload,
-            line_ref,
-            direction_ref=direction_ref,
-            destination_ref=destination_ref,
-            filter_direction=filter_direction,
-        )
+        """Prochains passages à un arrêt (un ou plusieurs points physiques)."""
+        groups: list[list[Departure]] = []
+        responses: list[dict[str, Any]] = []
+        for stop_ref in stop_refs:
+            payload = await self._get(
+                "stop-monitoring",
+                {
+                    "MonitoringRef": stop_ref,
+                    "LineRef": line_ref,
+                    "PreviewInterval": PREVIEW_INTERVAL,
+                    "MaximumStopVisits": MAX_STOP_VISITS,
+                },
+            )
+            if self.last_response:
+                responses.append(self.last_response)
+            groups.append(
+                parse_departures(
+                    payload,
+                    line_ref,
+                    direction_ref=direction_ref,
+                    monitoring_ref=stop_ref,
+                )
+            )
+        if len(responses) > 1:
+            self.last_response = {"multiple": responses}
+        return merge_departures(groups)

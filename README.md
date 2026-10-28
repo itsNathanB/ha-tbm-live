@@ -1,3 +1,5 @@
+<img src="custom_components/tbm_live/brand/icon@2x.png" alt="" width="96" align="right">
+
 # TBM Live pour Home Assistant
 
 [![HACS Custom](https://img.shields.io/badge/HACS-Custom-41BDF5.svg)](https://hacs.xyz/docs/faq/custom_repositories)
@@ -14,7 +16,7 @@ Choisissez une ligne, un arrêt et un sens depuis l'interface : l'intégration c
 ## Fonctionnalités
 
 - Configuration 100 % graphique, sans YAML ni clé d'API.
-- Choix guidé en deux étapes : **ligne** (tram ou bus), puis **arrêt + sens**. La liste des arrêts dépend de la ligne choisie.
+- Choix guidé en trois étapes avec recherche au clavier : **ligne**, puis **arrêt**, puis **sens** (indiqué par ses terminus, branches comprises).
 - Deux capteurs horodatés par arrêt suivi, mis à jour toutes les 60 secondes.
 - Indique si l'horaire est **temps réel** ou **théorique**, et le retard en minutes.
 - Les 6 prochains passages sont disponibles en attribut, pour les cartes personnalisées.
@@ -46,9 +48,10 @@ Choisissez une ligne, un arrêt et un sens depuis l'interface : l'intégration c
 ## Configuration
 
 1. **Paramètres** → **Appareils et services** → **Ajouter une intégration** → **TBM Live**.
-2. **Ligne** : choisissez la ligne. Les trams apparaissent en premier ; tapez dans le champ pour filtrer, par exemple « Tram B » ou « Bus 15 ».
-3. **Arrêt et sens** : choisissez l'arrêt. Chaque entrée affiche l'arrêt puis la destination, par exemple `Quinconces → Pessac Centre`. Choisissez celle qui correspond au sens dans lequel vous partez.
-4. Validez. L'appareil et ses capteurs sont créés.
+2. **Ligne** : commencez à taper pour filtrer, par exemple « Tram B » ou « Bus 15 ». Les trams apparaissent en premier.
+3. **Arrêt** : tapez le début du nom de l'arrêt, par exemple « Quinc » pour Quinconces. Seuls les arrêts de la ligne choisie sont proposés.
+4. **Sens** : choisissez la direction, indiquée par ses terminus, par exemple `Vers Pessac Centre / France Alouette`. Cette étape est sautée quand un seul sens dessert l'arrêt.
+5. L'appareil et ses capteurs sont créés.
 
 Pour suivre un autre arrêt, un autre sens ou une autre ligne, recommencez : **Ajouter une entrée** sur la carte TBM Live.
 
@@ -131,7 +134,9 @@ actions:
 ## Bon à savoir
 
 - **Source des données** : flux temps réel SIRI-Lite de Bordeaux Métropole, publié en open data. Les données sont fournies telles quelles. Si le réseau ne transmet pas de position pour un véhicule, l'horaire théorique est affiché et `realtime` vaut `false`.
-- **Liste des arrêts** : elle est construite à partir des courses du jour de la ligne, ce qui garantit des arrêts et des sens corrects. Tard le soir, si la ligne ne circule plus, une liste de secours est utilisée : les sens y sont alors moins précis, et il vaut mieux refaire la configuration en journée.
+- **Liste des arrêts** : elle est construite à partir des courses du jour de la ligne, branches comprises. Tard le soir, si la ligne ne circule plus, une liste de secours est utilisée : elle est classée par ordre alphabétique et propose les sens génériques de la ligne. Le résultat reste correct, mais la configuration est plus agréable en journée.
+- **Icône** : l'icône de l'intégration s'affiche à partir de Home Assistant **2026.3**. Les versions antérieures montrent une icône générique.
+- **Terminus** : les véhicules qui terminent leur course à l'arrêt choisi ne sont pas comptés comme des départs.
 - **Fréquence** : une requête par minute et par arrêt suivi. Merci de ne pas ajouter des dizaines d'arrêts inutiles, l'API est un service public gratuit.
 
 ## Dépannage

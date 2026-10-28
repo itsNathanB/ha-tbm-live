@@ -23,13 +23,15 @@ CONF_LINE_REF = "line_ref"
 CONF_LINE_NAME = "line_name"
 CONF_LINE_MODE = "line_mode"
 CONF_STOP_REF = "stop_ref"
+# Points d'arrêt physiques interrogés (v0.2+). CONF_STOP_REF reste le premier.
+CONF_STOP_REFS = "stop_refs"
 CONF_STOP_NAME = "stop_name"
 CONF_DIRECTION_REF = "direction_ref"
 CONF_DIRECTION_NAME = "direction_name"
-CONF_DESTINATION_REF = "destination_ref"
-# True si l'arrêt choisi est un point d'arrêt physique (un seul sens).
-CONF_PHYSICAL = "physical"
-CONF_CHOICE = "choice"
+# Champs des formulaires de configuration.
+CONF_LINE = "line"
+CONF_STOP = "stop"
+CONF_DIRECTION = "direction"
 
 DEFAULT_SCAN_INTERVAL = timedelta(seconds=60)
 # Fenêtre d'interrogation des prochains passages (durée ISO-8601).

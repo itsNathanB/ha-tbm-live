@@ -3,23 +3,31 @@
     "step": {
       "user": {
         "title": "Choose a line",
-        "description": "Pick the TBM bus or tram line you want to follow. Type in the list to filter it.",
+        "description": "Pick the TBM tram or bus line. Start typing to filter the list (e.g. \"Tram B\", \"Bus 15\").",
         "data": {
-          "line_ref": "Line"
+          "line": "Line"
         }
       },
       "stop": {
-        "title": "Choose a stop and direction",
-        "description": "Stops served by {line}. Each entry is a stop followed by the line's destination.",
+        "title": "Choose a stop",
+        "description": "Stops served by {line}. Start typing the stop name to filter the list.",
         "data": {
-          "choice": "Stop and direction"
+          "stop": "Stop"
+        }
+      },
+      "direction": {
+        "title": "Choose a direction",
+        "description": "{line} at {stop}: which way are you going?",
+        "data": {
+          "direction": "Direction"
         }
       }
     },
     "error": {
       "cannot_connect": "Unable to reach the TBM real-time API. Try again in a moment.",
       "no_lines": "The TBM API did not return any line.",
-      "no_stops": "No stop could be found for this line. Try again later (the list is built from today's trips)."
+      "no_stops": "No stop could be found for this line. Try again later.",
+      "invalid_choice": "Pick an entry from the list."
     },
     "abort": {
       "already_configured": "This stop and direction are already followed for this line."
