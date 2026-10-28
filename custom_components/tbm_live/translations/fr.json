@@ -1,0 +1,38 @@
+{
+  "config": {
+    "step": {
+      "user": {
+        "title": "Choisir une ligne",
+        "description": "Choisissez la ligne de bus ou de tram TBM à suivre. Tapez dans la liste pour la filtrer.",
+        "data": {
+          "line_ref": "Ligne"
+        }
+      },
+      "stop": {
+        "title": "Choisir l'arrêt et le sens",
+        "description": "Arrêts desservis par {line}. Chaque entrée indique l'arrêt puis la destination de la ligne.",
+        "data": {
+          "choice": "Arrêt et sens"
+        }
+      }
+    },
+    "error": {
+      "cannot_connect": "Impossible de joindre l'API temps réel TBM. Réessayez dans un instant.",
+      "no_lines": "L'API TBM n'a renvoyé aucune ligne.",
+      "no_stops": "Aucun arrêt trouvé pour cette ligne. Réessayez plus tard (la liste est construite à partir des courses du jour)."
+    },
+    "abort": {
+      "already_configured": "Cet arrêt et ce sens sont déjà suivis pour cette ligne."
+    }
+  },
+  "entity": {
+    "sensor": {
+      "next_departure": {
+        "name": "Prochain passage"
+      },
+      "second_departure": {
+        "name": "Passage suivant"
+      }
+    }
+  }
+}

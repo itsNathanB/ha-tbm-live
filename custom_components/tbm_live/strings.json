@@ -1,0 +1,38 @@
+{
+  "config": {
+    "step": {
+      "user": {
+        "title": "Choose a line",
+        "description": "Pick the TBM bus or tram line you want to follow. Type in the list to filter it.",
+        "data": {
+          "line_ref": "Line"
+        }
+      },
+      "stop": {
+        "title": "Choose a stop and direction",
+        "description": "Stops served by {line}. Each entry is a stop followed by the line's destination.",
+        "data": {
+          "choice": "Stop and direction"
+        }
+      }
+    },
+    "error": {
+      "cannot_connect": "Unable to reach the TBM real-time API. Try again in a moment.",
+      "no_lines": "The TBM API did not return any line.",
+      "no_stops": "No stop could be found for this line. Try again later (the list is built from today's trips)."
+    },
+    "abort": {
+      "already_configured": "This stop and direction are already followed for this line."
+    }
+  },
+  "entity": {
+    "sensor": {
+      "next_departure": {
+        "name": "Next departure"
+      },
+      "second_departure": {
+        "name": "Following departure"
+      }
+    }
+  }
+}
