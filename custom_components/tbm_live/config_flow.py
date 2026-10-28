@@ -135,8 +135,6 @@ class TbmConfigFlow(ConfigFlow, domain=DOMAIN):
                 self._directions = _unique_labels(
                     [(d.label, d) for d in stop.directions.values()]
                 )
-                if len(self._directions) == 1:
-                    return await self._create(next(iter(self._directions.values())))
                 return await self.async_step_direction()
             errors[CONF_STOP] = "invalid_choice"
 

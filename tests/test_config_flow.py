@@ -81,13 +81,17 @@ async def test_full_flow(hass: HomeAssistant, mock_client) -> None:
     assert result["data"]["direction_ref"] == "1"
 
 
-async def test_single_direction_skips_step(hass: HomeAssistant, mock_client) -> None:
+async def test_single_direction_still_asked(hass: HomeAssistant, mock_client) -> None:
     result = await _start(hass)
     result = await hass.config_entries.flow.async_configure(
         result["flow_id"], {"line": "Tram B"}
     )
     result = await hass.config_entries.flow.async_configure(
         result["flow_id"], {"stop": "Pessac Centre"}
+    )
+    assert result["step_id"] == "direction"
+    result = await hass.config_entries.flow.async_configure(
+        result["flow_id"], {"direction": "Vers Berges de la Garonne"}
     )
     assert result["type"] is FlowResultType.CREATE_ENTRY
     assert result["data"]["direction_ref"] == "0"
@@ -110,6 +114,9 @@ async def test_duplicate_aborts(hass: HomeAssistant, mock_client) -> None:
         )
         result = await hass.config_entries.flow.async_configure(
             result["flow_id"], {"stop": "Pessac Centre"}
+        )
+        result = await hass.config_entries.flow.async_configure(
+            result["flow_id"], {"direction": "Vers Berges de la Garonne"}
         )
     assert result["type"] is FlowResultType.ABORT
     assert result["reason"] == "already_configured"

@@ -40,6 +40,10 @@ _LOGGER = logging.getLogger(__name__)
 
 REQUEST_TIMEOUT = aiohttp.ClientTimeout(total=20)
 TRAM_LETTERS = {"A", "B", "C", "D", "E", "F"}
+# Part minimale des courses d'un sens pour proposer un arrêt dans ce sens.
+MIN_SHARE = 0.15
+# Part minimale des courses à un arrêt pour afficher un terminus.
+MIN_DESTINATION_SHARE = 0.10
 
 
 class TbmError(Exception):
@@ -355,10 +359,16 @@ def parse_line_stops_from_timetable(
     `payloads` associe un DirectionRef demandé ("0", "1") à la réponse brute.
     Toutes les courses sont fusionnées : les branches (tram A, B...) et les
     services partiels sont donc couverts.
+
+    Les couples (arrêt, sens) desservis par une petite minorité de courses
+    sont écartés : ce sont des mouvements techniques (sortie de dépôt,
+    voyages sans voyageurs...) qui feraient apparaître un arrêt sur une ligne
+    qui ne le dessert pas en service normal (ex. « La Vache » sur le tram C).
     """
     stops: dict[str, LineStop] = {}
     display: dict[str, str] = {}
     counters: dict[tuple[str, str], Counter[str]] = {}
+    served: Counter[tuple[str, str]] = Counter()
     sequences: dict[str, list[list[str]]] = {}
 
     for requested_direction, payload in payloads.items():
@@ -395,6 +405,7 @@ def parse_line_stops_from_timetable(
                 )
                 if ref not in stop_direction.stop_refs:
                     stop_direction.stop_refs.append(ref)
+                served[(key, direction)] += 1
                 if destination:
                     counters.setdefault((key, direction), Counter())[destination] += 1
             sequences.setdefault(direction, []).append(sequence)
@@ -402,9 +413,25 @@ def parse_line_stops_from_timetable(
     if not stops:
         return []
 
+    # Écarte les dessertes marginales (moins de MIN_SHARE des courses du sens).
+    busiest: Counter[str] = Counter()
+    for (_, direction), count in served.items():
+        busiest[direction] = max(busiest[direction], count)
+    for (key, direction), count in served.items():
+        if count < max(2, MIN_SHARE * busiest[direction]):
+            stops[key].directions.pop(direction, None)
+    stops = {key: stop for key, stop in stops.items() if stop.directions}
+
+    # Terminus affichés : on ignore les services partiels rares.
     for (key, direction), counter in counters.items():
+        if key not in stops or direction not in stops[key].directions:
+            continue
+        total = sum(counter.values())
+        ranked = counter.most_common()
         stops[key].directions[direction].destinations = [
-            name for name, _ in counter.most_common()
+            name
+            for i, (name, count) in enumerate(ranked)
+            if i == 0 or count >= MIN_DESTINATION_SHARE * total
         ]
 
     # Ordre le long de la ligne : sens 0 d'abord, puis sens 1 parcouru à l'envers.

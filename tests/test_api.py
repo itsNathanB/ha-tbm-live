@@ -36,10 +36,12 @@ def _payload(*journeys):
 def test_branches_and_terminus_names():
     payloads = {
         "0": _payload(
-            _journey("0", [("a0", "Centre"), ("b0", "Nord"), ("c0", "Branche 1")]),
-            _journey("0", [("a0", "Centre"), ("d0", "Branche 2")]),
+            *[_journey("0", [("a0", "Centre"), ("b0", "Nord"), ("c0", "Branche 1")])] * 5,
+            *[_journey("0", [("a0", "Centre"), ("d0", "Branche 2")])] * 5,
         ),
-        "1": _payload(_journey("1", [("c1", "Branche 1"), ("b1", "Nord"), ("a1", "Centre")])),
+        "1": _payload(
+            *[_journey("1", [("c1", "Branche 1"), ("b1", "Nord"), ("a1", "Centre")])] * 5
+        ),
     }
     stops = {s.name: s for s in parse_line_stops_from_timetable(payloads, LINE)}
     # « Branche 2 » n'est qu'un terminus : aucun départ, donc pas proposé.
@@ -49,6 +51,26 @@ def test_branches_and_terminus_names():
     # Terminus du sens 1 : pas de départ dans ce sens.
     assert "1" not in centre
     assert stops["Branche 1"].directions["1"].label == "Vers Centre"
+
+
+def test_marginal_stop_dropped():
+    """Courses techniques (ex. sortie de dépôt à « La Vache » sur le tram C)."""
+    regular = [
+        _journey("0", [("p", "Pyrénées"), ("m", "Milieu"), ("e", "Expos")])
+        for _ in range(20)
+    ]
+    depot = [
+        _journey("0", [("v", "La Vache"), ("p", "Pyrénées"), ("m", "Milieu"), ("e", "Expos")])
+        for _ in range(2)
+    ]
+    short = [_journey("0", [("p", "Pyrénées"), ("m", "Milieu")]) for _ in range(1)]
+    stops = {
+        s.name: s
+        for s in parse_line_stops_from_timetable({"0": _payload(*regular, *depot, *short)}, LINE)
+    }
+    assert "La Vache" not in stops
+    # Terminus rare (1 course sur 23) absent du libellé.
+    assert stops["Pyrénées"].directions["0"].label == "Vers Expos"
 
 
 def test_departures_filtering():
