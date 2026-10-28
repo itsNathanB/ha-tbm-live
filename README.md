@@ -19,7 +19,7 @@ Choisissez une ligne, un arrêt et un sens depuis l'interface : l'intégration c
 - Configuration 100 % graphique, sans YAML ni clé d'API.
 - Choix guidé en trois étapes avec recherche au clavier : **ligne**, puis **arrêt**, puis **sens** (indiqué par ses terminus, branches comprises).
 - **De 2 à 5 prochains passages** par arrêt, au choix, modifiable à tout moment. Chaque passage est un capteur horodaté, mis à jour toutes les 60 secondes.
-- **Une carte de tableau de bord incluse**, sobre et lisible, qui s'accorde au thème [Fluvy](https://github.com/acosta290/fluvy) comme au thème par défaut, en clair comme en sombre. Rien d'autre à installer.
+- **Une carte de tableau de bord incluse**, sobre et lisible, qui suit votre thème Home Assistant, en clair comme en sombre. Rien d'autre à installer.
 - Indique si l'horaire est **temps réel** ou **théorique**, et le retard en minutes.
 - Ajoutez autant d'arrêts que vous voulez : une entrée par couple ligne / arrêt / sens.
 - Export de diagnostics intégré pour signaler un problème.
@@ -89,9 +89,14 @@ L'interface affiche nativement « dans 4 minutes ». Le capteur passe en `unknow
 
 ## La carte
 
-![Carte TBM Live avec le thème Fluvy, en clair et en sombre](docs/card.png)
+![Carte TBM Live, en clair et en sombre](docs/card.png)
 
-La carte est livrée avec l'intégration : après l'installation et un rafraîchissement du navigateur, elle apparaît dans **Ajouter une carte → TBM Live**, avec un éditeur visuel.
+La carte est livrée avec l'intégration, sans ressource à ajouter. Après l'installation, redémarrez Home Assistant puis rafraîchissez la page (sur l'application mobile : Paramètres de l'appli → Débogage → *Recharger la page* ou vider le cache du frontend). Pour l'ajouter :
+
+- **Ajouter une carte → Par entité** : choisissez un capteur d'arrêt, la carte **TBM Live** est proposée parmi les suggestions ;
+- ou **Ajouter une carte → Par carte** : cherchez « TBM Live ».
+
+Elle dispose d'un éditeur visuel.
 
 Pour chaque arrêt, elle affiche :
 - le prochain passage en grand, et « À l'approche » quand il arrive ;
@@ -120,7 +125,15 @@ entities:
 
 Options par arrêt : `name`, `color` (fond de la pastille), `text_color`, `code` (texte de la pastille).
 
-La carte utilise les couleurs, rayons et police du thème Fluvy s'il est actif, sinon celles de votre thème Home Assistant.
+La carte reprend les couleurs et la police de votre thème Home Assistant. Pour l'ajuster, un thème peut définir ces variables :
+
+| Variable | Rôle |
+|---|---|
+| `tbm-live-accent`, `tbm-live-accent-fill`, `tbm-live-on-accent-fill` | Pastilles de tram |
+| `tbm-live-chip`, `tbm-live-chip-text` | Pastilles de bus et passages suivants |
+| `tbm-live-text`, `tbm-live-text-secondary`, `tbm-live-border` | Textes et séparateurs |
+| `tbm-live-realtime`, `tbm-live-delay`, `tbm-live-delay-fill` | Indicateur temps réel et retard |
+| `tbm-live-radius`, `tbm-live-padding`, `tbm-live-gap`, `tbm-live-font` | Formes, espacements et police |
 
 ## Exemples
 

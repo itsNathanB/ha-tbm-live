@@ -1,0 +1,42 @@
+# Test de bout en bout : vrai Home Assistant + vrai navigateur + vraie API TBM.
+# Lancement manuel (onglet Actions → E2E → Run workflow) ; captures en artefact.
+name: E2E
+on:
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  e2e:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.14"
+      - run: pip install homeassistant
+      - name: Dépendances de default_config
+        run: |
+          python - <<'PY' > /tmp/req.txt
+          import json, pathlib, homeassistant.components as c
+          root = pathlib.Path(c.__file__).parent
+          seen, todo, reqs = set(), ["default_config", "frontend", "http"], set()
+          while todo:
+              d = todo.pop()
+              if d in seen or not (root / d / "manifest.json").exists():
+                  continue
+              seen.add(d)
+              m = json.loads((root / d / "manifest.json").read_text())
+              reqs.update(m.get("requirements", []))
+              todo += m.get("dependencies", []) + m.get("after_dependencies", [])
+          print("\n".join(sorted(reqs)))
+          PY
+          wc -l /tmp/req.txt
+          while read r; do pip install -q "$r" || echo "échec $r"; done < /tmp/req.txt
+      - run: pip install playwright && python -m playwright install --with-deps chromium
+      - run: .github/e2e/run.sh
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: e2e-captures
+          path: samples/

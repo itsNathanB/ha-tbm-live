@@ -1,14 +1,15 @@
 /*
- * TBM Live card — prochains passages, dans l'esprit du thème Fluvy.
+ * TBM Live card — prochains passages, design sobre.
  *
  * Intégration communautaire non officielle (https://github.com/itsNathanB/ha-tbm-live).
  * Sans dépendance ni étape de build : servie telle quelle par l'intégration.
  *
- * Utilise les variables --fluvy-* quand le thème Fluvy est actif, sinon les
- * variables standard de Home Assistant : la carte suit donc n'importe quel thème.
+ * Utilise uniquement les variables standard de Home Assistant : la carte suit
+ * donc n'importe quel thème. Chaque couleur peut aussi être surchargée par un
+ * thème via les variables --tbm-live-* (voir README).
  */
 
-const CARD_VERSION = "0.3.0";
+const CARD_VERSION = "0.3.1";
 const DOMAIN = "tbm_live";
 const GRACE_MS = 30 * 1000;
 const MAX_COUNT = 5;
@@ -91,21 +92,21 @@ function findTbmEntities(hass) {
 
 const STYLE = `
   :host {
-    --tl-text: var(--fluvy-text, var(--primary-text-color));
-    --tl-text-2: var(--fluvy-text-secondary, var(--secondary-text-color));
-    --tl-accent: var(--fluvy-accent, var(--primary-color));
-    --tl-accent-fill: var(--fluvy-accent-fill, color-mix(in srgb, var(--primary-color) 15%, transparent));
-    --tl-on-accent-fill: var(--fluvy-accent-on-fill, var(--primary-color));
-    --tl-chip: var(--fluvy-page-alt, color-mix(in srgb, var(--primary-text-color) 7%, transparent));
-    --tl-chip-text: var(--fluvy-text, var(--primary-text-color));
-    --tl-border: var(--fluvy-border, var(--divider-color, rgba(127, 127, 127, 0.2)));
-    --tl-success: var(--fluvy-success, var(--success-color, #2e7d32));
-    --tl-warning: var(--fluvy-warning, var(--warning-color, #b26a00));
-    --tl-warning-fill: var(--fluvy-warning-fill, color-mix(in srgb, var(--warning-color, #b26a00) 16%, transparent));
-    --tl-radius-control: var(--fluvy-radius-control, 12px);
-    --tl-pad: var(--fluvy-pad-comfortable, 16px);
-    --tl-gap: var(--fluvy-gap-comfortable, 12px);
-    --tl-font: var(--fluvy-font-sans, var(--ha-font-family-body, var(--primary-font-family, inherit)));
+    --tl-text: var(--tbm-live-text, var(--primary-text-color));
+    --tl-text-2: var(--tbm-live-text-secondary, var(--secondary-text-color));
+    --tl-accent: var(--tbm-live-accent, var(--primary-color));
+    --tl-accent-fill: var(--tbm-live-accent-fill, color-mix(in srgb, var(--primary-color) 15%, transparent));
+    --tl-on-accent-fill: var(--tbm-live-on-accent-fill, var(--primary-color));
+    --tl-chip: var(--tbm-live-chip, color-mix(in srgb, var(--primary-text-color) 7%, transparent));
+    --tl-chip-text: var(--tbm-live-chip-text, var(--primary-text-color));
+    --tl-border: var(--tbm-live-border, var(--divider-color, rgba(127, 127, 127, 0.2)));
+    --tl-success: var(--tbm-live-realtime, var(--success-color, #2e7d32));
+    --tl-warning: var(--tbm-live-delay, var(--warning-color, #b26a00));
+    --tl-warning-fill: var(--tbm-live-delay-fill, color-mix(in srgb, var(--warning-color, #b26a00) 16%, transparent));
+    --tl-radius-control: var(--tbm-live-radius, 12px);
+    --tl-pad: var(--tbm-live-padding, 16px);
+    --tl-gap: var(--tbm-live-gap, 12px);
+    --tl-font: var(--tbm-live-font, var(--ha-font-family-body, var(--primary-font-family, inherit)));
     display: block;
   }
   ha-card { overflow: hidden; }
@@ -118,8 +119,8 @@ const STYLE = `
     gap: var(--tl-gap);
   }
   .title {
-    font-size: var(--fluvy-text-l, 16px);
-    font-weight: var(--fluvy-weight-semibold, 600);
+    font-size: 16px;
+    font-weight: 600;
     line-height: 1.2;
   }
   .row {
@@ -143,7 +144,7 @@ const STYLE = `
     display: grid; place-items: center;
     background: var(--tl-chip);
     color: var(--tl-chip-text);
-    font-weight: var(--fluvy-weight-bold, 700);
+    font-weight: 700;
     font-size: 17px;
     letter-spacing: -0.02em;
     font-variant-numeric: tabular-nums;
@@ -153,38 +154,38 @@ const STYLE = `
   .badge.long { font-size: 13px; }
   .info { min-width: 0; }
   .stop {
-    font-size: var(--fluvy-text-m, 14px);
-    font-weight: var(--fluvy-weight-semibold, 600);
+    font-size: 14px;
+    font-weight: 600;
     white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
   }
   .dir {
     margin-top: 2px;
-    font-size: var(--fluvy-text-s, 12px);
+    font-size: 12px;
     color: var(--tl-text-2);
     white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
   }
   .eta { text-align: right; }
   .eta-main { white-space: nowrap; line-height: 1; }
   .num {
-    font-size: var(--fluvy-text-3xl, 28px);
-    font-weight: var(--fluvy-weight-semibold, 600);
+    font-size: 28px;
+    font-weight: 600;
     font-variant-numeric: tabular-nums;
     letter-spacing: -0.03em;
   }
-  .unit { font-size: var(--fluvy-text-s, 12px); color: var(--tl-text-2); margin-left: 3px; }
-  .due { font-size: var(--fluvy-text-m, 14px); font-weight: var(--fluvy-weight-semibold, 600); color: var(--tl-accent); }
+  .unit { font-size: 12px; color: var(--tl-text-2); margin-left: 3px; }
+  .due { font-size: 14px; font-weight: 600; color: var(--tl-accent); }
   .eta-sub {
     margin-top: 5px;
-    font-size: var(--fluvy-text-xs, 11px);
+    font-size: 11px;
     color: var(--tl-text-2);
     display: inline-flex; align-items: center; gap: 5px;
     white-space: nowrap;
   }
   .delay {
     margin-left: 2px; padding: 1px 6px;
-    border-radius: var(--fluvy-radius-pill, 999px);
+    border-radius: 999px;
     background: var(--tl-warning-fill); color: var(--tl-warning);
-    font-weight: var(--fluvy-weight-semibold, 600);
+    font-weight: 600;
   }
   .dot {
     width: 7px; height: 7px; border-radius: 50%;
@@ -202,11 +203,11 @@ const STYLE = `
   .chip {
     display: inline-flex; align-items: center; gap: 6px;
     padding: 5px 10px;
-    border-radius: var(--fluvy-radius-pill, 999px);
+    border-radius: 999px;
     background: var(--tl-chip);
     color: var(--tl-chip-text);
-    font-size: var(--fluvy-text-s, 12px);
-    font-weight: var(--fluvy-weight-medium, 500);
+    font-size: 12px;
+    font-weight: 500;
     font-variant-numeric: tabular-nums;
     white-space: nowrap;
   }
@@ -215,26 +216,26 @@ const STYLE = `
     display: grid;
     grid-template-columns: auto minmax(0, 1fr);
     column-gap: 10px; row-gap: 4px;
-    font-size: var(--fluvy-text-s, 12px);
+    font-size: 12px;
     font-variant-numeric: tabular-nums;
   }
   .list .when {
     display: inline-flex; align-items: center; gap: 6px;
-    font-weight: var(--fluvy-weight-medium, 500);
+    font-weight: 500;
     white-space: nowrap;
   }
   .list .when .dot { width: 6px; height: 6px; }
   .list .dest { color: var(--tl-text-2); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
   .chip .dot { width: 6px; height: 6px; }
-  .empty { font-size: var(--fluvy-text-s, 12px); color: var(--tl-text-2); text-align: right; }
-  .warning { font-size: var(--fluvy-text-s, 12px); color: var(--tl-warning); }
+  .empty { font-size: 12px; color: var(--tl-text-2); text-align: right; }
+  .warning { font-size: 12px; color: var(--tl-warning); }
 
   /* Mode compact : une ligne par arrêt, les passages suivants en petit. */
   .compact .row { grid-template-columns: 32px minmax(0, 1fr) auto; }
   .compact .badge { width: 32px; height: 32px; font-size: 14px; border-radius: 10px; }
   .compact .badge.long { font-size: 11px; }
-  .compact .num { font-size: var(--fluvy-text-xl, 20px); }
-  .compact .then { margin-top: 3px; font-size: var(--fluvy-text-xs, 11px); color: var(--tl-text-2); white-space: nowrap; font-variant-numeric: tabular-nums; }
+  .compact .num { font-size: 20px; }
+  .compact .then { margin-top: 3px; font-size: 11px; color: var(--tl-text-2); white-space: nowrap; font-variant-numeric: tabular-nums; }
 `;
 
 class TbmLiveCard extends HTMLElement {
@@ -514,16 +515,68 @@ class TbmLiveCardEditor extends HTMLElement {
   }
 }
 
-if (!customElements.get("tbm-live-card")) {
-  customElements.define("tbm-live-card", TbmLiveCard);
-  customElements.define("tbm-live-card-editor", TbmLiveCardEditor);
+/*
+ * Enregistrement différé.
+ *
+ * Chargée via extra_module_url, la carte s'exécute AVANT l'application Home
+ * Assistant. Or celle-ci remplace ensuite window.customElements par un
+ * registre « scoped » (polyfill @webcomponents/scoped-custom-element-registry) :
+ * un élément déclaré trop tôt resterait dans l'ancien registre, invisible pour
+ * Home Assistant (« Custom element doesn't exist »). On attend donc que
+ * l'application soit définie, puis on déclare la carte dans le registre courant.
+ */
+function registerCard() {
+  const registry = window.customElements;
+  if (!registry.get("tbm-live-card")) registry.define("tbm-live-card", TbmLiveCard);
+  if (!registry.get("tbm-live-card-editor")) registry.define("tbm-live-card-editor", TbmLiveCardEditor);
   window.customCards = window.customCards || [];
-  window.customCards.push({
-    type: "tbm-live-card",
-    name: "TBM Live",
-    description: I18N.fr.description,
-    preview: true,
-    documentationURL: "https://github.com/itsNathanB/ha-tbm-live",
-  });
-  console.info(`%c TBM-LIVE-CARD %c ${CARD_VERSION} `, "background:#7E1A3B;color:#fff;border-radius:3px 0 0 3px", "background:#F4C95D;color:#33270b;border-radius:0 3px 3px 0");
+  if (!window.customCards.some((c) => c.type === "tbm-live-card")) {
+    window.customCards.push({
+      type: "tbm-live-card",
+      name: "TBM Live",
+      description: I18N.fr.description,
+      preview: true,
+      documentationURL: "https://github.com/itsNathanB/ha-tbm-live",
+      // Proposée dans « Ajouter une carte → Par entité » pour nos capteurs.
+      getEntitySuggestion: (hass, entityId) => {
+        const state = hass.states[entityId];
+        const ours =
+          hass.entities?.[entityId]?.platform === DOMAIN ||
+          (state?.attributes?.line_ref && state?.attributes?.stop !== undefined);
+        if (!ours) return null;
+        const entity = resolveMainEntity(hass, entityId);
+        return [
+          { label: "Standard", config: { type: "custom:tbm-live-card", entities: [entity] } },
+          {
+            label: "Compact",
+            config: { type: "custom:tbm-live-card", compact: true, entities: [entity] },
+          },
+        ];
+      },
+    });
+  }
 }
+
+function whenAppReady(callback) {
+  if (window.customElements.get("home-assistant")) {
+    callback();
+    return;
+  }
+  const started = Date.now();
+  const timer = window.setInterval(() => {
+    // Hors de l'application (page isolée, tests) : on n'attend pas indéfiniment.
+    if (window.customElements.get("home-assistant") || Date.now() - started > 30000) {
+      window.clearInterval(timer);
+      callback();
+    }
+  }, 50);
+}
+
+whenAppReady(() => {
+  registerCard();
+  console.info(
+    `%c TBM-LIVE-CARD %c ${CARD_VERSION} `,
+    "background:#7E1A3B;color:#fff;border-radius:3px 0 0 3px",
+    "background:#F4C95D;color:#33270b;border-radius:0 3px 3px 0",
+  );
+});
