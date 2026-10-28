@@ -22,6 +22,8 @@ METRO_BBOX = {
 CONF_LINE_REF = "line_ref"
 CONF_LINE_NAME = "line_name"
 CONF_LINE_MODE = "line_mode"
+# Code court affiché dans la pastille de ligne (« B », « 15 »).
+CONF_LINE_CODE = "line_code"
 CONF_STOP_REF = "stop_ref"
 # Points d'arrêt physiques interrogés (v0.2+). CONF_STOP_REF reste le premier.
 CONF_STOP_REFS = "stop_refs"
@@ -32,13 +34,20 @@ CONF_DIRECTION_NAME = "direction_name"
 CONF_LINE = "line"
 CONF_STOP = "stop"
 CONF_DIRECTION = "direction"
+# Option : nombre de passages suivis (capteurs + liste pour la carte).
+CONF_COUNT = "count"
+MIN_COUNT = 2
+MAX_COUNT = 5
+DEFAULT_COUNT = 3
 
 DEFAULT_SCAN_INTERVAL = timedelta(seconds=60)
 # Fenêtre d'interrogation des prochains passages (durée ISO-8601).
 PREVIEW_INTERVAL = "PT2H"
 MAX_STOP_VISITS = 20
-# Nombre de passages exposés en attribut.
-MAX_DEPARTURES_ATTR = 6
+
+# Carte Lovelace servie par l'intégration.
+CARD_FILENAME = "tbm-live-card.js"
+CARD_URL_BASE = "/tbm_live"
 
 MODE_TRAM = "tram"
 MODE_BUS = "bus"

@@ -73,9 +73,12 @@ async def test_full_flow(hass: HomeAssistant, mock_client) -> None:
     assert result["step_id"] == "direction"
 
     result = await hass.config_entries.flow.async_configure(
-        result["flow_id"], {"direction": "Vers France Alouette / Pessac Centre"}
+        result["flow_id"],
+        {"direction": "Vers France Alouette / Pessac Centre", "count": 4},
     )
     assert result["type"] is FlowResultType.CREATE_ENTRY
+    assert result["options"] == {"count": 4}
+    assert result["data"]["line_code"] == "B"
     assert result["title"] == "Tram B · Quinconces → France Alouette / Pessac Centre"
     assert result["data"]["stop_refs"] == ["BP:3764"]
     assert result["data"]["direction_ref"] == "1"
@@ -120,3 +123,32 @@ async def test_duplicate_aborts(hass: HomeAssistant, mock_client) -> None:
         )
     assert result["type"] is FlowResultType.ABORT
     assert result["reason"] == "already_configured"
+
+
+async def test_default_count(hass: HomeAssistant, mock_client) -> None:
+    result = await _start(hass)
+    result = await hass.config_entries.flow.async_configure(
+        result["flow_id"], {"line": "Tram B"}
+    )
+    result = await hass.config_entries.flow.async_configure(
+        result["flow_id"], {"stop": "Pessac Centre"}
+    )
+    result = await hass.config_entries.flow.async_configure(
+        result["flow_id"], {"direction": "Vers Berges de la Garonne"}
+    )
+    assert result["options"] == {"count": 3}
+
+
+async def test_options_flow(hass: HomeAssistant) -> None:
+    from pytest_homeassistant_custom_component.common import MockConfigEntry
+
+    entry = MockConfigEntry(domain=DOMAIN, data={}, options={"count": 3})
+    entry.add_to_hass(hass)
+    with patch("custom_components.tbm_live.async_setup_entry", return_value=True):
+        result = await hass.config_entries.options.async_init(entry.entry_id)
+        assert result["step_id"] == "init"
+        result = await hass.config_entries.options.async_configure(
+            result["flow_id"], {"count": 5}
+        )
+    assert result["type"] is FlowResultType.CREATE_ENTRY
+    assert entry.options == {"count": 5}

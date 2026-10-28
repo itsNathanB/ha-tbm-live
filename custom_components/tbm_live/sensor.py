@@ -1,9 +1,10 @@
-"""Capteurs « Prochain passage » et « Passage suivant »."""
+"""Capteurs des prochains passages (de 2 à 5 selon l'option choisie)."""
 
 from __future__ import annotations
 
 from dataclasses import dataclass
 from datetime import datetime, timedelta
+import re
 from typing import Any
 
 from homeassistant.components.sensor import (
@@ -11,7 +12,9 @@ from homeassistant.components.sensor import (
     SensorEntity,
     SensorEntityDescription,
 )
+from homeassistant.const import Platform
 from homeassistant.core import HomeAssistant
+from homeassistant.helpers import entity_registry as er
 from homeassistant.helpers.device_registry import DeviceEntryType, DeviceInfo
 from homeassistant.helpers.entity_platform import AddConfigEntryEntitiesCallback
 from homeassistant.helpers.update_coordinator import CoordinatorEntity
@@ -20,14 +23,16 @@ from homeassistant.util import dt as dt_util
 from .api import Departure
 from .const import (
     ATTRIBUTION,
+    CONF_COUNT,
     CONF_DIRECTION_NAME,
+    CONF_LINE_CODE,
     CONF_LINE_MODE,
     CONF_LINE_NAME,
     CONF_LINE_REF,
     CONF_STOP_NAME,
     CONF_STOP_REF,
+    DEFAULT_COUNT,
     DOMAIN,
-    MAX_DEPARTURES_ATTR,
     MODE_TRAM,
 )
 from .coordinator import TbmConfigEntry, TbmCoordinator
@@ -43,12 +48,36 @@ class TbmSensorDescription(SensorEntityDescription):
     index: int
 
 
-SENSORS: tuple[TbmSensorDescription, ...] = (
-    TbmSensorDescription(key="next_departure", translation_key="next_departure", index=0),
-    TbmSensorDescription(
-        key="second_departure", translation_key="second_departure", index=1
-    ),
+SENSORS: tuple[TbmSensorDescription, ...] = tuple(
+    TbmSensorDescription(key=key, translation_key=key, index=index)
+    for index, key in enumerate(
+        (
+            "next_departure",
+            "second_departure",
+            "third_departure",
+            "fourth_departure",
+            "fifth_departure",
+        )
+    )
 )
+
+
+def departure_count(entry: TbmConfigEntry) -> int:
+    """Nombre de passages suivis pour cette entrée."""
+    return int(entry.options.get(CONF_COUNT, DEFAULT_COUNT))
+
+
+def line_code(data: dict[str, Any]) -> str:
+    """Code court de la ligne (« B », « 15 »), y compris pour les entrées v0.1/v0.2."""
+    if code := data.get(CONF_LINE_CODE):
+        return str(code)
+    name = str(data.get(CONF_LINE_NAME) or "")
+    match = re.match(r"(?:tram|bus)\s+([^\s–-]+)", name, re.IGNORECASE)
+    if match:
+        return match.group(1)
+    ref = str(data.get(CONF_LINE_REF) or "")
+    parts = ref.split(":")
+    return parts[2].lstrip("0") if len(parts) >= 3 else name[:3]
 
 
 async def async_setup_entry(
@@ -56,9 +85,21 @@ async def async_setup_entry(
     entry: TbmConfigEntry,
     async_add_entities: AddConfigEntryEntitiesCallback,
 ) -> None:
-    """Crée les capteurs d'un arrêt suivi."""
+    """Crée les capteurs d'un arrêt suivi, et retire ceux devenus inutiles."""
     coordinator = entry.runtime_data
-    async_add_entities(TbmDepartureSensor(coordinator, desc) for desc in SENSORS)
+    count = departure_count(entry)
+
+    registry = er.async_get(hass)
+    for description in SENSORS[count:]:
+        if entity_id := registry.async_get_entity_id(
+            Platform.SENSOR, DOMAIN, f"{entry.unique_id}|{description.key}"
+        ):
+            registry.async_remove(entity_id)
+
+    async_add_entities(
+        TbmDepartureSensor(coordinator, description, count)
+        for description in SENSORS[:count]
+    )
 
 
 class TbmDepartureSensor(CoordinatorEntity[TbmCoordinator], SensorEntity):
@@ -73,10 +114,14 @@ class TbmDepartureSensor(CoordinatorEntity[TbmCoordinator], SensorEntity):
     _unrecorded_attributes = frozenset({"departures", "minutes"})
 
     def __init__(
-        self, coordinator: TbmCoordinator, description: TbmSensorDescription
+        self,
+        coordinator: TbmCoordinator,
+        description: TbmSensorDescription,
+        count: int,
     ) -> None:
         super().__init__(coordinator)
         self.entity_description = description
+        self._count = count
         entry = coordinator.config_entry
         self._data = entry.data
         self._attr_unique_id = f"{entry.unique_id}|{description.key}"
@@ -118,6 +163,7 @@ class TbmDepartureSensor(CoordinatorEntity[TbmCoordinator], SensorEntity):
         departure = self._current()
         attrs: dict[str, Any] = {
             "line": self._data.get(CONF_LINE_NAME),
+            "line_code": line_code(self._data),
             "line_ref": self._data.get(CONF_LINE_REF),
             "mode": self._data.get(CONF_LINE_MODE),
             "stop": self._data.get(CONF_STOP_NAME),
@@ -134,7 +180,8 @@ class TbmDepartureSensor(CoordinatorEntity[TbmCoordinator], SensorEntity):
                 }
             )
         if self.entity_description.index == 0:
+            attrs["count"] = self._count
             attrs["departures"] = [
-                d.as_dict(now) for d in self._upcoming()[:MAX_DEPARTURES_ATTR]
+                d.as_dict(now) for d in self._upcoming()[: self._count]
             ]
         return attrs

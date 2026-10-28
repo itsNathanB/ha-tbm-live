@@ -15,3 +15,5 @@ jobs:
           python-version: "3.13"
       - run: pip install -r requirements_test.txt
       - run: pytest -q
+      - name: Syntaxe de la carte
+        run: node --check custom_components/tbm_live/www/tbm-live-card.js

@@ -18,9 +18,9 @@ Choisissez une ligne, un arrêt et un sens depuis l'interface : l'intégration c
 
 - Configuration 100 % graphique, sans YAML ni clé d'API.
 - Choix guidé en trois étapes avec recherche au clavier : **ligne**, puis **arrêt**, puis **sens** (indiqué par ses terminus, branches comprises).
-- Deux capteurs horodatés par arrêt suivi, mis à jour toutes les 60 secondes.
+- **De 2 à 5 prochains passages** par arrêt, au choix, modifiable à tout moment. Chaque passage est un capteur horodaté, mis à jour toutes les 60 secondes.
+- **Une carte de tableau de bord incluse**, sobre et lisible, qui s'accorde au thème [Fluvy](https://github.com/acosta290/fluvy) comme au thème par défaut, en clair comme en sombre. Rien d'autre à installer.
 - Indique si l'horaire est **temps réel** ou **théorique**, et le retard en minutes.
-- Les 6 prochains passages sont disponibles en attribut, pour les cartes personnalisées.
 - Ajoutez autant d'arrêts que vous voulez : une entrée par couple ligne / arrêt / sens.
 - Export de diagnostics intégré pour signaler un problème.
 
@@ -51,19 +51,22 @@ Choisissez une ligne, un arrêt et un sens depuis l'interface : l'intégration c
 1. **Paramètres** → **Appareils et services** → **Ajouter une intégration** → **TBM Live (non officiel)**.
 2. **Ligne** : commencez à taper pour filtrer, par exemple « Tram B » ou « Bus 15 ». Les trams apparaissent en premier.
 3. **Arrêt** : tapez le début du nom de l'arrêt, par exemple « Quinc » pour Quinconces. Seuls les arrêts de la ligne choisie sont proposés.
-4. **Sens** : choisissez la direction, indiquée par ses terminus, par exemple `Vers Pessac Centre / France Alouette`. Cette étape est sautée quand un seul sens dessert l'arrêt.
+4. **Sens et nombre de passages** : choisissez la direction, indiquée par ses terminus, par exemple `Vers Pessac Centre / France Alouette`, puis le nombre de passages à suivre (2 à 5, 3 par défaut).
 5. L'appareil et ses capteurs sont créés.
+
+Pour changer ensuite le nombre de passages : **TBM Live → ⚙️ Configurer** sur l'entrée concernée. Les capteurs sont ajoutés ou retirés automatiquement.
 
 Pour suivre un autre arrêt, un autre sens ou une autre ligne, recommencez : **Ajouter une entrée** sur la carte TBM Live.
 
 ## Entités créées
 
-Pour chaque arrêt suivi, un appareil est créé avec deux capteurs de type horodatage (`timestamp`) :
+Pour chaque arrêt suivi, un appareil est créé avec un capteur de type horodatage (`timestamp`) par passage suivi :
 
 | Capteur | Valeur |
 |---|---|
 | **Prochain passage** | Heure du prochain départ |
 | **Passage suivant** | Heure du départ d'après |
+| **3e, 4e, 5e passage** | Selon le nombre de passages choisi |
 
 L'interface affiche nativement « dans 4 minutes ». Le capteur passe en `unknown` s'il n'y a plus de passage prévu dans les deux prochaines heures, par exemple la nuit.
 
@@ -76,16 +79,52 @@ L'interface affiche nativement « dans 4 minutes ». Le capteur passe en `unknow
 | `delay_minutes` | `2` | Écart avec l'horaire théorique |
 | `destination` | `Pessac Centre` | Destination affichée sur le véhicule |
 | `line` | `Tram B` | Ligne |
+| `line_code` | `B` | Code court de la ligne |
 | `stop` | `Quinconces` | Arrêt |
 | `direction` | `Pessac Centre` | Sens choisi à la configuration |
 | `mode` | `tram` | `tram`, `bus` ou `other` |
-| `departures` | *liste* | **Prochain passage seulement** : les 6 prochains départs (`time`, `minutes`, `realtime`, `delay_minutes`, `destination`, `cancelled`) |
+| `departures` | *liste* | **Prochain passage seulement** : les N prochains départs (`time`, `minutes`, `realtime`, `delay_minutes`, `destination`, `cancelled`) |
 
 `minutes` et `departures` ne sont pas enregistrés dans l'historique pour ne pas alourdir la base de données.
 
+## La carte
+
+![Carte TBM Live avec le thème Fluvy, en clair et en sombre](docs/card.png)
+
+La carte est livrée avec l'intégration : après l'installation et un rafraîchissement du navigateur, elle apparaît dans **Ajouter une carte → TBM Live**, avec un éditeur visuel.
+
+Pour chaque arrêt, elle affiche :
+- le prochain passage en grand, et « À l'approche » quand il arrive ;
+- un point vert pour le **temps réel** (un cercle vide pour un horaire théorique) et le retard éventuel ;
+- les passages suivants, avec leur terminus quand la ligne a plusieurs branches.
+
+Un appui sur un arrêt ouvre le détail du capteur.
+
+```yaml
+type: custom:tbm-live-card
+title: Départs
+entities:
+  - sensor.tram_b_quinconces_france_alouette_pessac_centre_prochain_passage
+  - entity: sensor.bus_15_barriere_de_toulouse_courrejean_prochain_passage
+    name: Vers l'école        # remplace le nom de l'arrêt
+    color: "#7E1A3B"          # couleur de la pastille de ligne
+```
+
+| Option | Par défaut | Description |
+|---|---|---|
+| `entities` | *obligatoire* | Un ou plusieurs capteurs **Prochain passage**. N'importe quel capteur d'un arrêt fonctionne : la carte retrouve le bon. |
+| `title` | aucun | Titre de la carte |
+| `count` | réglage de l'intégration | Nombre de passages affichés (1 à 5), dans la limite de ceux suivis par l'intégration |
+| `show_status` | `true` | Affiche « Temps réel / Horaire théorique » et le retard |
+| `compact` | `false` | Une ligne par arrêt, passages suivants en petit (« Puis 8 · 13 · 18 min ») |
+
+Options par arrêt : `name`, `color` (fond de la pastille), `text_color`, `code` (texte de la pastille).
+
+La carte utilise les couleurs, rayons et police du thème Fluvy s'il est actif, sinon celles de votre thème Home Assistant.
+
 ## Exemples
 
-### Carte simple
+### Carte simple (sans la carte TBM Live)
 
 ```yaml
 type: entities
@@ -161,8 +200,9 @@ logger:
 
 ## Feuille de route
 
-- [ ] Carte Lovelace dédiée aux prochains passages
-- [ ] Options : intervalle de mise à jour, nombre de passages
+- [x] Carte Lovelace dédiée
+- [x] Nombre de passages réglable
+- [ ] Intervalle de mise à jour réglable
 - [ ] Messages de perturbation du réseau
 
 ## Licence

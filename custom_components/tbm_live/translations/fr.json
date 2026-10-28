@@ -19,7 +19,11 @@
         "title": "Choisir le sens",
         "description": "{line} à {stop} : dans quelle direction partez-vous ?",
         "data": {
-          "direction": "Sens"
+          "direction": "Sens",
+          "count": "Nombre de passages"
+        },
+        "data_description": {
+          "count": "Combien de prochains passages suivre (capteurs et carte). Modifiable ensuite."
         }
       }
     },
@@ -40,6 +44,28 @@
       },
       "second_departure": {
         "name": "Passage suivant"
+      },
+      "third_departure": {
+        "name": "3e passage"
+      },
+      "fourth_departure": {
+        "name": "4e passage"
+      },
+      "fifth_departure": {
+        "name": "5e passage"
+      }
+    }
+  },
+  "options": {
+    "step": {
+      "init": {
+        "title": "Réglages",
+        "data": {
+          "count": "Nombre de passages"
+        },
+        "data_description": {
+          "count": "Combien de prochains passages suivre (capteurs et carte)."
+        }
       }
     }
   }

@@ -35,15 +35,20 @@ DATA_V1 = {
 }
 
 
-async def _setup(hass: HomeAssistant, data: dict) -> tuple[MockConfigEntry, AsyncMock]:
+async def _setup(
+    hass: HomeAssistant, data: dict, options: dict | None = None
+) -> tuple[MockConfigEntry, AsyncMock]:
     now = dt_util.utcnow()
     departures = [
         Departure(time=now + timedelta(minutes=m), aimed_time=now + timedelta(minutes=m),
                   realtime=True, destination="Pessac Centre", line_name=None,
                   journey_ref=f"j{m}")
-        for m in (4, 12, 20)
+        for m in (4, 12, 20, 28, 36, 44)
     ]
-    entry = MockConfigEntry(domain=DOMAIN, data=data, unique_id="u", title="Tram B · Quinconces")
+    entry = MockConfigEntry(
+        domain=DOMAIN, data=data, options=options or {}, unique_id="u",
+        title="Tram B · Quinconces",
+    )
     entry.add_to_hass(hass)
     mock = AsyncMock(return_value=departures)
     with patch("custom_components.tbm_live.TbmClient.async_get_departures", mock):
@@ -63,7 +68,10 @@ async def test_sensors_have_values(hass: HomeAssistant) -> None:
     assert states["next_departure"].state not in ("unknown", "unavailable")
     assert states["second_departure"].state not in ("unknown", "unavailable")
     assert states["next_departure"].attributes["minutes"] in (3, 4)
+    # 3 passages par défaut : 3 capteurs, 3 passages en attribut.
+    assert set(states) == {"next_departure", "second_departure", "third_departure"}
     assert len(states["next_departure"].attributes["departures"]) == 3
+    assert states["next_departure"].attributes["line_code"] == "B"
     assert mock.call_args.kwargs["stop_refs"] == ["BP:3764"]
     assert mock.call_args.kwargs["direction_ref"] == "1"
 
@@ -72,3 +80,19 @@ async def test_v01_entry_still_works(hass: HomeAssistant) -> None:
     entry, mock = await _setup(hass, DATA_V1)
     assert _states(hass, entry)["next_departure"].state not in ("unknown", "unavailable")
     assert mock.call_args.kwargs["stop_refs"] == ["BP:3764"]
+
+
+async def test_count_option_changes_sensors(hass: HomeAssistant) -> None:
+    entry, _ = await _setup(hass, DATA_V2, {"count": 5})
+    states = _states(hass, entry)
+    assert len(states) == 5
+    assert len(states["next_departure"].attributes["departures"]) == 5
+
+    # Passage à 2 : les capteurs en trop sont retirés.
+    with patch(
+        "custom_components.tbm_live.TbmClient.async_get_departures",
+        AsyncMock(return_value=[]),
+    ):
+        hass.config_entries.async_update_entry(entry, options={"count": 2})
+        await hass.async_block_till_done()
+    assert set(_states(hass, entry)) == {"next_departure", "second_departure"}

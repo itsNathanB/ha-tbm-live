@@ -7,9 +7,18 @@ from typing import Any
 
 import voluptuous as vol
 
-from homeassistant.config_entries import ConfigFlow, ConfigFlowResult
+from homeassistant.config_entries import (
+    ConfigEntry,
+    ConfigFlow,
+    ConfigFlowResult,
+    OptionsFlow,
+)
+from homeassistant.core import callback
 from homeassistant.helpers.aiohttp_client import async_get_clientsession
 from homeassistant.helpers.selector import (
+    NumberSelector,
+    NumberSelectorConfig,
+    NumberSelectorMode,
     SelectSelector,
     SelectSelectorConfig,
     SelectSelectorMode,
@@ -17,10 +26,12 @@ from homeassistant.helpers.selector import (
 
 from .api import Line, LineStop, StopDirection, TbmClient, TbmConnectionError, TbmError
 from .const import (
+    CONF_COUNT,
     CONF_DIRECTION,
     CONF_DIRECTION_NAME,
     CONF_DIRECTION_REF,
     CONF_LINE,
+    CONF_LINE_CODE,
     CONF_LINE_MODE,
     CONF_LINE_NAME,
     CONF_LINE_REF,
@@ -28,7 +39,10 @@ from .const import (
     CONF_STOP_NAME,
     CONF_STOP_REF,
     CONF_STOP_REFS,
+    DEFAULT_COUNT,
     DOMAIN,
+    MAX_COUNT,
+    MIN_COUNT,
 )
 
 _LOGGER = logging.getLogger(__name__)
@@ -43,6 +57,15 @@ def _unique_labels(items: list[tuple[str, Any]]) -> dict[str, Any]:
             candidate, n = f"{label} ({n})", n + 1
         result[candidate] = item
     return result
+
+
+def _count_selector() -> NumberSelector:
+    """Curseur 2 → 5 pour le nombre de passages."""
+    return NumberSelector(
+        NumberSelectorConfig(
+            min=MIN_COUNT, max=MAX_COUNT, step=1, mode=NumberSelectorMode.SLIDER
+        )
+    )
 
 
 def _search_select(labels: list[str]) -> SelectSelector:
@@ -66,6 +89,12 @@ class TbmConfigFlow(ConfigFlow, domain=DOMAIN):
     """Ajout d'un arrêt suivi (une entrée = une ligne + un arrêt + un sens)."""
 
     VERSION = 1
+
+    @staticmethod
+    @callback
+    def async_get_options_flow(config_entry: ConfigEntry) -> TbmOptionsFlow:
+        """Menu « Configurer » d'une entrée."""
+        return TbmOptionsFlow()
 
     def __init__(self) -> None:
         self._client: TbmClient | None = None
@@ -183,7 +212,9 @@ class TbmConfigFlow(ConfigFlow, domain=DOMAIN):
         if user_input is not None:
             direction = self._directions.get(user_input.get(CONF_DIRECTION, ""))
             if direction is not None:
-                return await self._create(direction)
+                return await self._create(
+                    direction, int(user_input.get(CONF_COUNT, DEFAULT_COUNT))
+                )
             errors[CONF_DIRECTION] = "invalid_choice"
 
         schema = vol.Schema(
@@ -194,7 +225,8 @@ class TbmConfigFlow(ConfigFlow, domain=DOMAIN):
                         mode=SelectSelectorMode.LIST,
                         sort=False,
                     )
-                )
+                ),
+                vol.Required(CONF_COUNT, default=DEFAULT_COUNT): _count_selector(),
             }
         )
         return self.async_show_form(
@@ -209,7 +241,7 @@ class TbmConfigFlow(ConfigFlow, domain=DOMAIN):
 
     # ---------------------------------------------------------------- création
 
-    async def _create(self, direction: StopDirection) -> ConfigFlowResult:
+    async def _create(self, direction: StopDirection, count: int) -> ConfigFlowResult:
         assert self._line is not None and self._stop is not None
         line, stop = self._line, self._stop
         # Même format d'identifiant qu'en v0.1 : les doublons restent détectés.
@@ -223,10 +255,30 @@ class TbmConfigFlow(ConfigFlow, domain=DOMAIN):
                 CONF_LINE_REF: line.ref,
                 CONF_LINE_NAME: line.label,
                 CONF_LINE_MODE: line.mode,
+                CONF_LINE_CODE: line.short_name,
                 CONF_STOP_NAME: stop.name,
                 CONF_STOP_REF: direction.stop_refs[0],
                 CONF_STOP_REFS: direction.stop_refs,
                 CONF_DIRECTION_REF: direction.ref,
                 CONF_DIRECTION_NAME: terminus,
             },
+            options={CONF_COUNT: count},
+        )
+
+
+class TbmOptionsFlow(OptionsFlow):
+    """Réglages modifiables après coup."""
+
+    async def async_step_init(
+        self, user_input: dict[str, Any] | None = None
+    ) -> ConfigFlowResult:
+        if user_input is not None:
+            return self.async_create_entry(data={CONF_COUNT: int(user_input[CONF_COUNT])})
+
+        current = int(self.config_entry.options.get(CONF_COUNT, DEFAULT_COUNT))
+        return self.async_show_form(
+            step_id="init",
+            data_schema=vol.Schema(
+                {vol.Required(CONF_COUNT, default=current): _count_selector()}
+            ),
         )

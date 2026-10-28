@@ -19,7 +19,11 @@
         "title": "Choose a direction",
         "description": "{line} at {stop}: which way are you going?",
         "data": {
-          "direction": "Direction"
+          "direction": "Direction",
+          "count": "Number of departures"
+        },
+        "data_description": {
+          "count": "How many upcoming departures to follow (sensors and card). Can be changed later."
         }
       }
     },
@@ -40,6 +44,28 @@
       },
       "second_departure": {
         "name": "Following departure"
+      },
+      "third_departure": {
+        "name": "Departure 3"
+      },
+      "fourth_departure": {
+        "name": "Departure 4"
+      },
+      "fifth_departure": {
+        "name": "Departure 5"
+      }
+    }
+  },
+  "options": {
+    "step": {
+      "init": {
+        "title": "Settings",
+        "data": {
+          "count": "Number of departures"
+        },
+        "data_description": {
+          "count": "How many upcoming departures to follow (sensors and card)."
+        }
       }
     }
   }
