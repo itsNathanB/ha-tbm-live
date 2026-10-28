@@ -3,7 +3,7 @@
     "step": {
       "user": {
         "title": "Choose a line",
-        "description": "Pick the TBM tram or bus line. Start typing to filter the list (e.g. \"Tram B\", \"Bus 15\").",
+        "description": "Pick a tram or bus line of the Bordeaux network. Start typing to filter the list (e.g. \"Tram B\", \"Bus 15\").\n\nUnofficial community integration, not affiliated with TBM, Keolis or Bordeaux Métropole.",
         "data": {
           "line": "Line"
         }
@@ -24,7 +24,7 @@
       }
     },
     "error": {
-      "cannot_connect": "Unable to reach the TBM real-time API. Try again in a moment.",
+      "cannot_connect": "Unable to reach the Bordeaux Métropole open data real-time API. Try again in a moment.",
       "no_lines": "The TBM API did not return any line.",
       "no_stops": "No stop could be found for this line. Try again later.",
       "invalid_choice": "Pick an entry from the list."

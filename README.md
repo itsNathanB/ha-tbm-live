@@ -1,15 +1,16 @@
 <img src="custom_components/tbm_live/brand/icon@2x.png" alt="" width="96" align="right">
 
-# TBM Live pour Home Assistant
+# TBM Live pour Home Assistant (non officiel)
 
 [![HACS Custom](https://img.shields.io/badge/HACS-Custom-41BDF5.svg)](https://hacs.xyz/docs/faq/custom_repositories)
 [![Validate](https://github.com/itsNathanB/ha-tbm-live/actions/workflows/validate.yml/badge.svg)](https://github.com/itsNathanB/ha-tbm-live/actions/workflows/validate.yml)
 
-Les prochains passages **en temps réel** des bus et trams **TBM** (Bordeaux Métropole), directement dans Home Assistant.
+Les prochains passages **en temps réel** des bus et trams du réseau bordelais, directement dans Home Assistant, à partir des données ouvertes publiées par Bordeaux Métropole.
 
 Choisissez une ligne, un arrêt et un sens depuis l'interface : l'intégration crée deux capteurs, **Prochain passage** et **Passage suivant**, que vous pouvez afficher sur n'importe quel tableau de bord ou utiliser dans vos automatisations.
 
-> Projet communautaire, non affilié à TBM, Keolis ni Bordeaux Métropole.
+> [!IMPORTANT]
+> **Intégration non officielle.** Ce projet communautaire n'est ni affilié, ni approuvé, ni soutenu par TBM, Keolis ou Bordeaux Métropole. Il utilise uniquement leurs données ouvertes publiques. Pour toute question sur le réseau ou les horaires, adressez-vous à TBM. Pour un problème avec l'intégration, ouvrez une [issue](https://github.com/itsNathanB/ha-tbm-live/issues) ici.
 
 ---
 
@@ -36,7 +37,7 @@ Choisissez une ligne, un arrêt et un sens depuis l'interface : l'intégration c
 1. Dans Home Assistant, ouvrez **HACS**.
 2. Menu **⋮** en haut à droite → **Dépôts personnalisés**.
 3. Collez l'URL `https://github.com/itsNathanB/ha-tbm-live`, choisissez le type **Intégration**, puis **Ajouter**.
-4. Recherchez **TBM Live** dans HACS, ouvrez-la puis cliquez sur **Télécharger**.
+4. Recherchez **TBM Live (non officiel)** dans HACS, ouvrez-la puis cliquez sur **Télécharger**.
 5. **Redémarrez Home Assistant.**
 
 ### Manuellement
@@ -47,7 +48,7 @@ Choisissez une ligne, un arrêt et un sens depuis l'interface : l'intégration c
 
 ## Configuration
 
-1. **Paramètres** → **Appareils et services** → **Ajouter une intégration** → **TBM Live**.
+1. **Paramètres** → **Appareils et services** → **Ajouter une intégration** → **TBM Live (non officiel)**.
 2. **Ligne** : commencez à taper pour filtrer, par exemple « Tram B » ou « Bus 15 ». Les trams apparaissent en premier.
 3. **Arrêt** : tapez le début du nom de l'arrêt, par exemple « Quinc » pour Quinconces. Seuls les arrêts de la ligne choisie sont proposés.
 4. **Sens** : choisissez la direction, indiquée par ses terminus, par exemple `Vers Pessac Centre / France Alouette`. Cette étape est sautée quand un seul sens dessert l'arrêt.
@@ -141,7 +142,7 @@ actions:
 
 ## Dépannage
 
-**« Impossible de joindre l'API temps réel TBM »**
+**« Impossible de joindre l'API open data temps réel de Bordeaux Métropole »**
 L'API est peut-être momentanément indisponible. Réessayez quelques minutes plus tard et vérifiez que Home Assistant a bien accès à Internet.
 
 **Aucun arrêt proposé pour une ligne**
@@ -160,11 +161,14 @@ logger:
 
 ## Feuille de route
 
-- [ ] Carte Lovelace dédiée (prochains passages au style du réseau TBM)
+- [ ] Carte Lovelace dédiée aux prochains passages
 - [ ] Options : intervalle de mise à jour, nombre de passages
 - [ ] Messages de perturbation du réseau
 
 ## Licence
 
 Code sous licence [MIT](LICENSE).
-Données : © Bordeaux Métropole / TBM, [Licence Ouverte / Open Licence](https://www.etalab.gouv.fr/licence-ouverte-open-licence/).
+
+Données : open data de Bordeaux Métropole, sous [Licence Ouverte / Open Licence](https://www.etalab.gouv.fr/licence-ouverte-open-licence/). Leur réutilisation n'implique aucune validation de ce projet par le producteur des données.
+
+« TBM » et les noms associés appartiennent à leurs titulaires respectifs. Ils sont cités ici uniquement pour désigner le réseau dont les données sont affichées. L'icône de l'intégration est une création originale, sans rapport avec les logos du réseau.

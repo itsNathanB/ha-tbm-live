@@ -1,5 +1,7 @@
 {
-  "name": "TBM Live",
+  "name": "TBM Live (non officiel)",
   "homeassistant": "2025.2.0",
-  "country": ["FR"]
+  "country": [
+    "FR"
+  ]
 }

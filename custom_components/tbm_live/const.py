@@ -44,4 +44,7 @@ MODE_TRAM = "tram"
 MODE_BUS = "bus"
 MODE_OTHER = "other"
 
-ATTRIBUTION = "Données : Bordeaux Métropole / TBM (Licence Ouverte)"
+ATTRIBUTION = (
+    "Source : open data Bordeaux Métropole (Licence Ouverte). "
+    "Intégration non officielle."
+)

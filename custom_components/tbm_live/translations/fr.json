@@ -3,7 +3,7 @@
     "step": {
       "user": {
         "title": "Choisir une ligne",
-        "description": "Choisissez la ligne de tram ou de bus TBM. Commencez à taper pour filtrer la liste (ex. « Tram B », « Bus 15 »).",
+        "description": "Choisissez une ligne de tram ou de bus du réseau bordelais. Commencez à taper pour filtrer la liste (ex. « Tram B », « Bus 15 »).\n\nIntégration communautaire non officielle, sans lien avec TBM, Keolis ni Bordeaux Métropole.",
         "data": {
           "line": "Ligne"
         }
@@ -24,7 +24,7 @@
       }
     },
     "error": {
-      "cannot_connect": "Impossible de joindre l'API temps réel TBM. Réessayez dans un instant.",
+      "cannot_connect": "Impossible de joindre l'API open data temps réel de Bordeaux Métropole. Réessayez dans un instant.",
       "no_lines": "L'API TBM n'a renvoyé aucune ligne.",
       "no_stops": "Aucun arrêt trouvé pour cette ligne. Réessayez plus tard.",
       "invalid_choice": "Choisissez une entrée de la liste."

@@ -86,9 +86,12 @@ class TbmDepartureSensor(CoordinatorEntity[TbmCoordinator], SensorEntity):
         self._attr_device_info = DeviceInfo(
             identifiers={(DOMAIN, entry.unique_id or entry.entry_id)},
             name=entry.title,
-            manufacturer="TBM – Bordeaux Métropole",
+            # Projet communautaire : surtout pas le nom de l'exploitant ici,
+            # Home Assistant l'afficherait comme fabricant (« par … »).
+            manufacturer="Projet communautaire (non officiel)",
             model=self._data.get(CONF_LINE_NAME),
             entry_type=DeviceEntryType.SERVICE,
+            configuration_url="https://github.com/itsNathanB/ha-tbm-live",
         )
 
     def _upcoming(self) -> list[Departure]:
